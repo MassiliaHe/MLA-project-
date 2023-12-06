@@ -3,23 +3,24 @@ Ce code implémente un classificateur PyTorch pour prédire
 40 attributs binaires du dataset CelebA à partir des représentations latentes
 """
 
-#importer la bibliothèque PyTorch pour l'apprentissage profond
+# Importer la bibliothèque PyTorch pour l'apprentissage profond
 import torch
-#importer le module nn de PyTorch qui contient des classes pour construire des réseaux de neurones
+# Importer le module nn de PyTorch qui contient des classes pour construire des réseaux de neurones
 import torch.nn as nn
 
 
-#définition de la classe FaderNetworksClassifier qui hérite de nn.Module
-#nn.Module : classe de base pour tous les modules de réseau neuronal dans PyTorch
-class FaderNetworksClassifier(nn.Module):
+# Définition de la classe Classifier qui hérite de nn.Module
+# nn.Module : classe de base pour tous les modules de réseau neuronal dans PyTorch
 
-    #constructeur de la classe FaderNetworksClassifier
+class Classifier(nn.Module):
+
+    #constructeur de la classe Classifier
     #n_attributes: paramètre stockant le nombre d'attributs avec une valeur par défaut de 40
     # ce qui correspond au nombre d'attributs dans le dataset CelebA.
     def __init__(self, n_attributes=40):
 
         #appeler le constructeur de la classe mère pour initialiser le module correctement
-        super(FaderNetworksClassifier, self).__init__()
+        super(Classifier, self).__init__()
 
         #construire les couches linéaires pour le classificateur
         self.fc_layers = nn.Sequential(

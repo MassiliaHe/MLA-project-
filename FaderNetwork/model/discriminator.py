@@ -1,11 +1,7 @@
-
-
 import torch
 import torch.nn as nn
 
-
-
-class FaderNetworksDiscriminator (nn.Module):
+class Discriminator(nn.Module):
     def __init__(self, n_attributes):
         """
         @goal: generate the classifier that deals with the AE- architecture
@@ -15,7 +11,7 @@ class FaderNetworksDiscriminator (nn.Module):
         @output:"y":the attributes deduced from the "z" latent code 
         """
 
-        super(FaderNetworksDiscriminator, self).__init__()
+        super(Discriminator, self).__init__()
         ##Part1:"C_k" layer defined in the paper for the discriminator :  convolution -> Batch Normalization -> ReLU  ,k represents the number of filters(in our case 512)
         self.conv1=nn.Conv2d(512,512,kernel_size=(4,4),stride=(2,2),padding=(1,1)) #values for kernel_size ,stride and padding are defined in the paper
         self.bn1=nn.BatchNorm2d(512) 
@@ -28,11 +24,7 @@ class FaderNetworksDiscriminator (nn.Module):
         self.dropout=nn.Dropout(p=0.3) #value following the paper 
         self.sigmoid=nn.Sigmoid()
 
-
-
     def forward(self, z):
-        """
-        """
         z= self.dropout(self.relu(self.bn1(self.conv1(z))))        # convolution -> Batch Normalization -> ReLU 
         z= z.view(-1,512)                                          # reshaping to making the layer flat for the next layer 
         z= self.dropout(self.relu(self.layer1(z)))                 # propagation throw the first layer fully connected
@@ -40,4 +32,3 @@ class FaderNetworksDiscriminator (nn.Module):
         y_hat=self.sigmoid(z)                                      # finding the attributes throw the discriminator 
 
         return y_hat
-    
