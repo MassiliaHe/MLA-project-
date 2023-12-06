@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from dataset.dataloader import CelebADataset
-from FaderNetwork.model.classificateur import Classifier
+from FaderNetwork.classificateur import Classifier
 from utils.training import classifier_step
 
 
