@@ -57,3 +57,8 @@ def discriminator_step(discriminator, autoencoder, images, attributes, discrimin
 
     return loss
 
+def step():
+    # TODO 
+    # Add a step function to train all the model for a batch 
+    # (facultatif)
+    pass
