@@ -3,12 +3,11 @@ import argparse
 import numpy as np
 import torch
 from torch.autograd import Variable
-from torchvision.utils import make_grid
 import matplotlib.image
 
-from src.logging_util import init_logger
-from src.image_loader import load_dataset, SampleData
-from src.config_utils import parse_boolean
+from utils import init_logger
+from dataloader import load_dataset, SampleData
+from utils import parse_boolean
 
 # Setup parameters
 param_parser = argparse.ArgumentParser(description='Attribute modification')
@@ -97,7 +96,7 @@ def create_image_grid(image_set, grid_horizontal, grid_dimension=5):
     Generate a grid of all images.
     """
  # TODO
-
+    pass
 
 # Create image grid and save as PNG
 #TODO
