@@ -2,48 +2,77 @@ import torch
 from torch.utils.data import DataLoader
 
 from dataset.dataloader import CelebADataset
-from FaderNetwork.classificateur import Classifier
+from FaderNetwork.classifier_ import Classifier
 from utils.training import classifier_step
 
-
-def train_classier():
-    # Specify the path to your CelebA dataset
+def train_classifier():
+    
+    #paths and parameters
     celeba_root = '/path/to/celeba/dataset'
-
-    # Create an instance of the CelebADataset with specified transformations
-    # TODO Instantiate with specific parameters
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
-
-    # Specify batch size and whether to shuffle the data
     batch_size = 64
-    shuffle = True
+    num_epochs = 10
+    learning_rate = 0.001
 
-    # Create DataLoader TODO Instantiate with specific parameters
-    celeba_dataloader = DataLoader(dataset=celeba_dataset, batch_size=batch_size, shuffle=shuffle)
+    #dataset and dataLoader setup
+    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
+    celeba_dataloader = DataLoader(dataset=celeba_dataset, batch_size=batch_size, shuffle=True)
 
-    # Create instances of your models (Encoder, Decoder, Classifier, Discriminator)
-    # TODO Instantiate with specific parameters
-    classifier = Classifier()  
 
-    # Define training parameters
-    num_epochs = 10  # Adjust as needed
-    learning_rate = 0.001  # Adjust as needed
+    """
+    #create the DataLoader for the validation dataset
+    #path to the validation dataset
+    validation_data_root = '/path/to/validation/dataset'  
+    validation_batch_size = 64
+    #to adjust according to the needs
+    shuffle_validation = False  
 
-    # Define optimizers for each model TODO Each one choose an optimiser for it's model
+    validation_dataset = CelebADataset(root_dir=validation_data_root, image_size=(64, 64), normalize=True)
+    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size=validation_batch_size, shuffle=shuffle_validation)
+    """
+
+    #Model and Optimizer
+    classifier = Classifier()
     classifier_optimizer = torch.optim.Adam(classifier.parameters(), lr=learning_rate)
-
-    # Move models to device if using GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    #move the model to the device
+    classifier.to(device)
+
+    # best validation loss initialization
+    best_val_loss = float('inf')
 
     for epoch in range(num_epochs):
         classifier.train()
+        total_loss = 0
+
+        #training step
         for batch in celeba_dataloader:
             images, attributes = batch['image'].to(device), batch['attributes'].to(device)
-            classifier_loss = classifier_step(classifier, classifier_optimizer, images, attributes)
-            # Print or log the losses if needed
-            print(f"Epoch [{epoch+1}/{num_epochs}], Classifier Loss: {classifier_loss}")
-        
-        # TODO Add validation 
+            classifier_loss = classifier_step(classifier, images, attributes, classifier_optimizer)
+            total_loss += classifier_loss
 
-    # Optionally, save the trained models
-    torch.save(classifier.state_dict(), 'classifier.pth')
+        avg_loss = total_loss / len(celeba_dataloader)
+        print(f"Epoch [{epoch+1}/{num_epochs}], Classifier Loss: {avg_loss}")
+
+        #validation step
+        classifier.eval()
+        val_loss = 0
+        with torch.no_grad():
+
+            #assuming we have the validation dataloader
+            for val_images, val_attributes in validation_dataloader:
+                val_preds = classifier(val_images.to(device))
+                val_loss += torch.nn.functional.binary_cross_entropy_with_logits(val_preds, val_attributes.to(device))
+
+        avg_val_loss = val_loss / len(validation_dataloader)
+        print(f"Validation Loss: {avg_val_loss}")
+
+        #save the model if validation loss has improved
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            torch.save(classifier.state_dict(), 'classifier_best.pth')
+            print("Saved Improved Model")
+
+#call the function to start training
+train_classifier()
+

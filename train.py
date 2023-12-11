@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from dataset.dataloader import CelebADataset
 from FaderNetwork.autoencoder import AutoEncoder
-from FaderNetwork.classificateur import Classifier
+from FaderNetwork.classifier_ import Classifier
 from FaderNetwork.discriminator import Discriminator
 from utils.training import autoencoder_step, classifier_step, discriminator_step
 
@@ -29,6 +29,18 @@ def train():
 
     # Create DataLoader TODO Instantiate with specific parameters
     celeba_dataloader = DataLoader(dataset=celeba_dataset, batch_size=batch_size, shuffle=shuffle)
+
+    """
+    #create the DataLoader for the validation dataset
+    #path to the validation dataset
+    validation_data_root = '/path/to/validation/dataset'  
+    validation_batch_size = 64
+    #to adjust according to the needs
+    shuffle_validation = False  
+
+    validation_dataset = CelebADataset(root_dir=validation_data_root, image_size=(64, 64), normalize=True)
+    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size=validation_batch_size, shuffle=shuffle_validation)
+    """
 
     # Create instances of your models (Encoder, Decoder, Classifier, Discriminator)
     # TODO Instantiate with specific parameters
@@ -66,7 +78,33 @@ def train():
             print(f"Epoch [{epoch+1}/{num_epochs}], autoencoder Loss: {autoencoder_loss}, Classifier Loss: {classifier_loss}, Discriminator Loss: {discriminator_loss}")
         
         # TODO Add validation for autoencoder, Classifier, Discriminator
+        
         # validation for Classifier
+        #set the classifier to evaluation mode
+        classifier.eval()
+        #initialize total validation loss for the classifier
+        total_val_loss_classifier = 0
+
+        #disable gradient calculation for validation
+        with torch.no_grad():
+            #iterate through the validation data
+            for val_images, val_attributes in validation_dataloader:
+                #forward pass: compute the classifier's output for validation images
+                val_outputs_classifier = classifier(val_images.to(device))
+
+                #calculate the validation loss using Binary Cross-Entropy Loss
+                #this compares the classifier's output with the true attributes
+                val_loss_classifier = torch.nn.functional.binary_cross_entropy_with_logits(val_outputs_classifier, val_attributes.to(device))
+
+                #accumulate the validation loss
+                total_val_loss_classifier += val_loss_classifier.item()
+
+        #compute the average validation loss for the classifier over all batches
+        avg_val_loss_classifier = total_val_loss_classifier / len(validation_dataloader)
+
+        #print the average validation loss for the classifier
+        print(f"Validation Loss for Classifier: {avg_val_loss_classifier}")
+        
         # validation for Autoencoder
         # validation for Discriminator
 
