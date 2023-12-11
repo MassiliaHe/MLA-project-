@@ -1,18 +1,22 @@
 import torch
 from torch.utils.data import DataLoader
 
-from dataset.dataloader import CelebADataset
+from dataset.dataloader import CelebADataset, split_data
 from FaderNetwork.classificateur import Classifier
 from utils.training import classifier_step
 
 
-def train_classier():
+def train_classier(base_dir,annotations_file,list_eval_partition,Attr):
     # Specify the path to your CelebA dataset
-    celeba_root = '/path/to/celeba/dataset'
-
+    # base_dir = img_align_celeba'#chemin vers les images 
+    # annotations_file = list_attr_celeba.csv 
+    # Use split_data to get the image IDs
+    #Attr attribue qu'on souhaite extraire
+    dataset_ids = split_data(list_eval_partition)
+    # Créer des instances de CelebADataset pour chaque ensemble
     # Create an instance of the CelebADataset with specified transformations
     # TODO Instantiate with specific parameters
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
+    celeba_dataset =  CelebADataset(base_dir, annotations_file,Attr, dataset_ids['train'])
 
     # Specify batch size and whether to shuffle the data
     batch_size = 64
