@@ -19,23 +19,22 @@ def classifier_step(classifier, images, attributes, classifier_optimizer):
 
     return loss
 
-def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer):
+def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer, criterion):
     """
     Train the classifier.
     """
-    autoencoder.train()
-    # TODO
-    ## batch / classify
-    preds = autoencoder(images)
-
-    ## loss / optimize
-
-    loss = 0
+     # Encode and decode images
+    encoded_imgs = autoencoder.encode(images)
+    decoded_imgs = autoencoder.decode(encoded_imgs, attributes)
+    # Calculate loss
+    loss = criterion(decoded_imgs, images)
+    
+    # Backpropagation and optimization
     autoencoder_optimizer.zero_grad()
     loss.backward()
     autoencoder_optimizer.step()
 
-    return loss
+    return loss.item()
 
 def discriminator_step(discriminator, autoencoder, images, attributes, discriminator_optimizer):
     """
