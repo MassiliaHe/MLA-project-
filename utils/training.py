@@ -21,20 +21,22 @@ def classifier_step(classifier, images, attributes, classifier_optimizer):
 
 def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer, criterion):
     """
-    Train the classifier.
+    Train the autoencoder.
     """
-     # Encode and decode images
+    autoencoder.train()
+    # Encode and decode images
     encoded_imgs = autoencoder.encode(images)
     decoded_imgs = autoencoder.decode(encoded_imgs, attributes)
     # Calculate loss
-    loss = criterion(decoded_imgs, images)
-    
+    loss = criterion(decoded_imgs, images)  # Assuming you have a reconstruction loss
     # Backpropagation and optimization
     autoencoder_optimizer.zero_grad()
     loss.backward()
     autoencoder_optimizer.step()
 
     return loss.item()
+
+s
 
 def discriminator_step(discriminator, autoencoder, images, attributes, discriminator_optimizer, criterion):
     """

@@ -1,6 +1,11 @@
 # Import libraries
 import json
 import numpy as np
+<<<<<<< HEAD
+import torch
+import torch.nn
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
 from logging import getLogger
 from autoencoder import modify_predictions, toggle_attributes
 from evaluation import display_accuracies
@@ -29,6 +34,19 @@ class ModelEvaluator(object):
         assert all(attribute in classifier_evaluator.attributes for attribute in settings.attributes)
 
     # Define methods for evaluation (e.g., eval_autoencoder_loss, eval_latent_discriminator_accuracy, etc.)
+<<<<<<< HEAD
+        
+
+    def eval_classifier_accuracy(self):
+        """
+        Evaluate and log the accuracy of the classifier.
+        """
+        dataloader = self.dataset.get_dataloader(batch_size=self.settings.batch_size, shuffle=False)
+        accuracy = calculate_classifier_accuracy(self.classifier_discriminator, dataloader, self.settings.device)
+        eval_logger.info(f"Classifier Accuracy: {accuracy:.4f}")
+
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
 
 # Below, redefine the methods of the Evaluator class with new names and slight modifications
 # while keeping the core functionality and logic intact.
@@ -39,5 +57,33 @@ def calculate_classifier_accuracy(classifier, dataset, settings):
     """
     Compute the accuracy of the classifier.
     """
+<<<<<<< HEAD
+    
+    # Mise en mode d'évaluation du classificateur
+    classifier.eval()
+
+    # Création d'un DataLoader pour l'ensemble de données
+    dataloader = DataLoader(dataset, batch_size=settings.batch_size, shuffle=False)
+
+    correct_predictions = 0
+    total_samples = 0
+
+    with torch.no_grad():
+        for batch in dataloader:
+            images, attributes = batch['image'], batch['attributes']
+            outputs = classifier(images.to(settings.device))
+
+            # Binarisez les sorties du classificateur en fonction d'un seuil (par exemple, 0,5)
+            predictions = (torch.sigmoid(outputs) > 0.5).int()
+
+            # Calculez le nombre de prédictions correctes dans ce batch
+            correct_predictions += (predictions == attributes).sum().item()
+            total_samples += len(images)
+
+    accuracy = correct_predictions / total_samples
+
+    return accuracy
+=======
     #TODO
     pass
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8

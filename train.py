@@ -10,12 +10,16 @@ from torch.utils.data import DataLoader
 
 from dataset.dataloader import CelebADataset, split_data
 from FaderNetwork.autoencoder import AutoEncoder
-from FaderNetwork.classificateur import Classifier
+from FaderNetwork.classifier import Classifier
 from FaderNetwork.discriminator import Discriminator
 from utils.training import autoencoder_step, classifier_step, discriminator_step
 
 
 def train(base_dir,annotations_file,list_eval_partition,Attr):
+<<<<<<< HEAD
+
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
     # Specify the path to your CelebA dataset
     # base_dir = img_align_celeba'#chemin vers les images 
     # annotations_file = list_attr_celeba.csv 
@@ -57,7 +61,7 @@ def train(base_dir,annotations_file,list_eval_partition,Attr):
 
     # Training loop
     for epoch in range(num_epochs):
-        for batch in celeba_dataloader:
+        for batch in celeba_dataloader_train:
             images, attributes = batch['image'].to(device), batch['attributes'].to(device)
 
             # Training steps for each component
@@ -70,7 +74,33 @@ def train(base_dir,annotations_file,list_eval_partition,Attr):
             print(f"Epoch [{epoch+1}/{num_epochs}], autoencoder Loss: {autoencoder_loss}, Classifier Loss: {classifier_loss}, Discriminator Loss: {discriminator_loss}")
         
         # TODO Add validation for autoencoder, Classifier, Discriminator
+        
         # validation for Classifier
+        #set the classifier to evaluation mode
+        classifier.eval()
+        #initialize total validation loss for the classifier
+        total_val_loss_classifier = 0
+
+        #disable gradient calculation for validation
+        with torch.no_grad():
+            #iterate through the validation data
+            for val_images, val_attributes in celeba_dataloader_val:
+                #forward pass: compute the classifier's output for validation images
+                val_outputs_classifier = classifier(val_images.to(device))
+
+                #calculate the validation loss using Binary Cross-Entropy Loss
+                #this compares the classifier's output with the true attributes
+                val_loss_classifier = torch.nn.functional.binary_cross_entropy_with_logits(val_outputs_classifier, val_attributes.to(device))
+
+                #accumulate the validation loss
+                total_val_loss_classifier += val_loss_classifier.item()
+
+        #compute the average validation loss for the classifier over all batches
+        avg_val_loss_classifier = total_val_loss_classifier / len(celeba_dataloader_val)
+
+        #print the average validation loss for the classifier
+        print(f"Validation Loss for Classifier: {avg_val_loss_classifier}")
+        
         # validation for Autoencoder
         # validation for Discriminator
 
