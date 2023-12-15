@@ -15,7 +15,7 @@ from dataset.dataloader import CelebADataset, split_data
 #import the Classifier class from the FaderNetwork module
 from FaderNetwork.classifier import Classifier  
 #import the classifier_step function from the utils.training module
-from utils.training import classifier_step
+from utils.trining import classifier_step
 
 def train_classifier(base_dir, annotations_file, list_eval_partition, Attr):
 
