@@ -6,7 +6,7 @@ from torch.autograd import Variable
 import matplotlib.image
 
 from utils import init_logger
-from dataloader import load_dataset, SampleData
+from dataset.dataloader import load_dataset, SampleData
 from utils import parse_boolean
 
 # Setup parameters
