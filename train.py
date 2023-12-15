@@ -16,7 +16,10 @@ from utils.training import autoencoder_step, classifier_step, discriminator_step
 
 
 def train(base_dir,annotations_file,list_eval_partition,Attr):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
     # Specify the path to your CelebA dataset
     # base_dir = img_align_celeba'#chemin vers les images 
     # annotations_file = list_attr_celeba.csv 

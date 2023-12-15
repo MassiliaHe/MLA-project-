@@ -1,8 +1,11 @@
 # Import libraries
 import json
 import numpy as np
+<<<<<<< HEAD
 import torch
 import torch.nn
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
 from logging import getLogger
 from autoencoder import modify_predictions, toggle_attributes
 from evaluation import display_accuracies
@@ -31,6 +34,7 @@ class ModelEvaluator(object):
         assert all(attribute in classifier_evaluator.attributes for attribute in settings.attributes)
 
     # Define methods for evaluation (e.g., eval_autoencoder_loss, eval_latent_discriminator_accuracy, etc.)
+<<<<<<< HEAD
         
 
     def eval_classifier_accuracy(self):
@@ -41,6 +45,8 @@ class ModelEvaluator(object):
         accuracy = calculate_classifier_accuracy(self.classifier_discriminator, dataloader, self.settings.device)
         eval_logger.info(f"Classifier Accuracy: {accuracy:.4f}")
 
+=======
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
 
 # Below, redefine the methods of the Evaluator class with new names and slight modifications
 # while keeping the core functionality and logic intact.
@@ -51,6 +57,7 @@ def calculate_classifier_accuracy(classifier, dataset, settings):
     """
     Compute the accuracy of the classifier.
     """
+<<<<<<< HEAD
     
     # Mise en mode d'évaluation du classificateur
     classifier.eval()
@@ -76,3 +83,7 @@ def calculate_classifier_accuracy(classifier, dataset, settings):
     accuracy = correct_predictions / total_samples
 
     return accuracy
+=======
+    #TODO
+    pass
+>>>>>>> 0f40e2ea35fbf89050664b3d1feb13bf04b6dac8
