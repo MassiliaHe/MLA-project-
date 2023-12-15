@@ -24,8 +24,8 @@ def train(base_dir,annotations_file,list_eval_partition,Attr):
     dataset_ids = split_data(list_eval_partition)
     # Créer des instances de CelebADataset pour chaque ensemble
     # Create an instance of the CelebADataset with specified transformations
-    # TODO Instantiate with specific parameters
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
+    # Instantiate with specific parameters
+    celeba_dataset = CelebADataset(root_dir="celeba_root", image_size=(64, 64), normalize=True)
 
     # Specify batch size and whether to shuffle the data
     batch_size = 64
@@ -58,7 +58,7 @@ def train(base_dir,annotations_file,list_eval_partition,Attr):
 
     # Training loop
     for epoch in range(num_epochs):
-        for batch in celeba_dataloader_train:
+        for batch in celeba_dataloader:
             images, attributes = batch['image'].to(device), batch['attributes'].to(device)
 
             # Training steps for each component
