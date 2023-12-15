@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from dataset.dataloader import CelebADataset
 from FaderNetwork.autoencoder import AutoEncoder
-from FaderNetwork.classifier_ import Classifier
+from FaderNetwork.classifier import Classifier
 from FaderNetwork.discriminator import Discriminator
 from utils.training import autoencoder_step, classifier_step, discriminator_step
 
