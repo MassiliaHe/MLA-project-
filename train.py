@@ -13,14 +13,14 @@ from FaderNetwork.autoencoder import AutoEncoder
 from FaderNetwork.classifier import Classifier
 from FaderNetwork.discriminator import Discriminator
 from utils.training import autoencoder_step, classifier_step, discriminator_step
-
+from utils.evaluation import ModelEvaluator
 
 def train():
     # Specify the path to your CelebA dataset
     celeba_root = '/path/to/celeba/dataset'
 
     # Create an instance of the CelebADataset with specified transformations
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True,annotations_file="list_attr_celeba.csv"name_attr="Smiling", img_ids=range(10000))
+    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True,annotations_file="list_attr_celeba.csv",name_attr="Smiling", img_ids=range(10000))
 
     # Specify batch size and whether to shuffle the data
     batch_size = 64
@@ -33,6 +33,8 @@ def train():
     autoencoder = AutoEncoder(n_attributes=1)  
     classifier = Classifier()  
     discriminator = Discriminator() 
+    eval_clf = torch.load(eval).cuda().eval()
+
 
     # Define training parameters
     num_epochs = 10  # Adjust as needed
@@ -62,7 +64,8 @@ def train():
             classifier_loss = classifier_step(classifier, images, attributes, classifier_optimizer)
             # Print or log the losses if needed
             print(f"Epoch [{epoch+1}/{num_epochs}], autoencoder Loss: {autoencoder_loss}, Classifier Loss: {classifier_loss}, Discriminator Loss: {discriminator_loss}")
-        
+
+        evaluate = ModelEvaluator(autoencoder, discriminator, classifier, celeba_dataset)
         # TODO Add validation for autoencoder, Classifier, Discriminator
         # validation for Classifier
         # validation for Autoencoder
