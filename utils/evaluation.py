@@ -44,35 +44,39 @@ class ModelEvaluator(object):
 # while keeping the core functionality and logic intact.
 # The methods include computation of various accuracies and losses, and logging these evaluations.
 
-# Method to compute classifier accuracy outside the class
+#method to compute classifier accuracy outside the class
 def calculate_classifier_accuracy(classifier, dataset, settings):
     """
     Compute the accuracy of the classifier.
     """
     
-    # Mise en mode d'évaluation du classificateur
+    #set the classifier in evaluation mode
     classifier.eval()
 
-    # Création d'un DataLoader pour l'ensemble de données
+    #create a DataLoader for the dataset
     dataloader = dataloader(dataset, batch_size=settings.batch_size, shuffle=False)
 
+    #iInitialize counters for correct predictions and total samples processed
     correct_predictions = 0
     total_samples = 0
 
+    #disabling gradient calculation to save memory and computations during evaluation
     with torch.no_grad():
         for batch in dataloader:
             images, attributes = batch['image'], batch['attributes']
             outputs = classifier(images.to(settings.device))
 
-            # Binarisez les sorties du classificateur en fonction d'un seuil (par exemple, 0,5)
+            #binarize the classifier outputs based on a threshold (e.g., 0.5)
             predictions = (torch.sigmoid(outputs) > 0.5).int()
 
-            # Calculez le nombre de prédictions correctes dans ce batch
+            #calculate the number of correct predictions in this batch
             correct_predictions += (predictions == attributes).sum().item()
             total_samples += len(images)
 
+    #calculate and return accuracy as the ratio of correct predictions to total samples
     accuracy = correct_predictions / total_samples
 
+    #return the accuracy
     return accuracy
 
 
