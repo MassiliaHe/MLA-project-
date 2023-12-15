@@ -8,39 +8,32 @@
 import torch
 from torch.utils.data import DataLoader
 
-from dataset.dataloader import CelebADataset
+from dataset.dataloader import CelebADataset, split_data
 from FaderNetwork.autoencoder import AutoEncoder
-from FaderNetwork.classifier_ import Classifier
+from FaderNetwork.classifier import Classifier
 from FaderNetwork.discriminator import Discriminator
 from utils.training import autoencoder_step, classifier_step, discriminator_step
 
 
-def train():
+def train(base_dir,annotations_file,list_eval_partition,Attr):
+
     # Specify the path to your CelebA dataset
-    celeba_root = '/path/to/celeba/dataset'
-
+    # base_dir = img_align_celeba'#chemin vers les images 
+    # annotations_file = list_attr_celeba.csv 
+    # Use split_data to get the image IDs
+    #Attr attribue qu'on souhaite extraire
+    dataset_ids = split_data(list_eval_partition)
+    # Créer des instances de CelebADataset pour chaque ensemble
     # Create an instance of the CelebADataset with specified transformations
-    # TODO Instantiate with specific parameters
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
-
+    celeba_dataset_train =  CelebADataset(base_dir, annotations_file,Attr, dataset_ids['train'])
+    celeba_dataset_val =  CelebADataset(base_dir, annotations_file,Attr, dataset_ids['validation'])
     # Specify batch size and whether to shuffle the data
     batch_size = 64
-    shuffle = True
 
     # Create DataLoader TODO Instantiate with specific parameters
-    celeba_dataloader = DataLoader(dataset=celeba_dataset, batch_size=batch_size, shuffle=shuffle)
+    celeba_dataloader_train = DataLoader(dataset=celeba_dataset_train, batch_size=batch_size, shuffle=True)
+    celeba_dataloader_val= DataLoader(dataset=celeba_dataset_val, batch_size=batch_size, shuffle=False)
 
-    """
-    #create the DataLoader for the validation dataset
-    #path to the validation dataset
-    validation_data_root = '/path/to/validation/dataset'  
-    validation_batch_size = 64
-    #to adjust according to the needs
-    shuffle_validation = False  
-
-    validation_dataset = CelebADataset(root_dir=validation_data_root, image_size=(64, 64), normalize=True)
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size=validation_batch_size, shuffle=shuffle_validation)
-    """
 
     # Create instances of your models (Encoder, Decoder, Classifier, Discriminator)
     # TODO Instantiate with specific parameters
@@ -65,7 +58,7 @@ def train():
 
     # Training loop
     for epoch in range(num_epochs):
-        for batch in celeba_dataloader:
+        for batch in celeba_dataloader_train:
             images, attributes = batch['image'].to(device), batch['attributes'].to(device)
 
             # Training steps for each component
@@ -88,7 +81,7 @@ def train():
         #disable gradient calculation for validation
         with torch.no_grad():
             #iterate through the validation data
-            for val_images, val_attributes in validation_dataloader:
+            for val_images, val_attributes in celeba_dataloader_val:
                 #forward pass: compute the classifier's output for validation images
                 val_outputs_classifier = classifier(val_images.to(device))
 
@@ -100,7 +93,7 @@ def train():
                 total_val_loss_classifier += val_loss_classifier.item()
 
         #compute the average validation loss for the classifier over all batches
-        avg_val_loss_classifier = total_val_loss_classifier / len(validation_dataloader)
+        avg_val_loss_classifier = total_val_loss_classifier / len(celeba_dataloader_val)
 
         #print the average validation loss for the classifier
         print(f"Validation Loss for Classifier: {avg_val_loss_classifier}")
