@@ -20,18 +20,16 @@ def train():
     celeba_root = '/path/to/celeba/dataset'
 
     # Create an instance of the CelebADataset with specified transformations
-    # TODO Instantiate with specific parameters
-    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True)
+    celeba_dataset = CelebADataset(root_dir=celeba_root, image_size=(64, 64), normalize=True,annotations_file="list_attr_celeba.csv"name_attr="Smiling", img_ids=range(10000))
 
     # Specify batch size and whether to shuffle the data
     batch_size = 64
     shuffle = True
 
-    # Create DataLoader TODO Instantiate with specific parameters
+    # Create DataLoader 
     celeba_dataloader = DataLoader(dataset=celeba_dataset, batch_size=batch_size, shuffle=shuffle)
 
     # Create instances of your models (Encoder, Decoder, Classifier, Discriminator)
-    # TODO Instantiate with specific parameters
     autoencoder = AutoEncoder(n_attributes=1)  
     classifier = Classifier()  
     discriminator = Discriminator() 
@@ -57,7 +55,7 @@ def train():
             images, attributes = batch['image'].to(device), batch['attributes'].to(device)
 
             # Training steps for each component
-            # TODO When training encoder, the decoder is in val mode vice versa
+            # When training encoder, the decoder is in val mode vice versa
             autoencoder_loss = autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer)
             # The discriminator needs the autoencoder in val mode
             discriminator_loss = discriminator_step(discriminator, autoencoder, images, attributes, discriminator_optimizer)
