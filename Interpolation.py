@@ -95,8 +95,14 @@ def create_image_grid(image_set, grid_horizontal, grid_dimension=5):
     """
     Generate a grid of all images.
     """
- # TODO
-    pass
+    num_images, num_columns, img_format, img_sz, _ = image_set.size()
+    if not grid_horizontal:
+        image_set = image_set.transpose(0, 1).contiguous()
+    image_set = image_set.view(num_images * num_columns, img_format, img_sz, img_sz)
+    image_set.add_(1).div_(2.0)
+    return make_grid(image_set, nrow=(num_columns if grid_horizontal else num_images))
+
 
 # Create image grid and save as PNG
-#TODO
+image_grid = create_image_grid(interpolated_images, parameters.horizontal_grid, parameters.grid_size)
+matplotlib.image.imsave(parameters.save_path, interpolated_images)
