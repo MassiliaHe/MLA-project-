@@ -62,7 +62,7 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
 
     # Update the discriminator.
     discriminator_optimizer.zero_grad()
-    adversarial_loss.backward(retain_graph=True)  # Retain graph for further autoencoder update.
+    adversarial_loss.backward(retain_graph=True)  
     discriminator_optimizer.step()
 
     # Compute the total loss for the autoencoder.
