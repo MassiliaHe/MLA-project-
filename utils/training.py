@@ -58,7 +58,7 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
     attributes_pred = discriminator(encoded_imgs.detach())
 
     # Compute the adversarial loss.
-    adversarial_loss = -torch.mean(torch.log(attributes_pred + 1e-8) * attributes + torch.log(1 - attributes_pred + 1e-8) * (1 - attributes))
+    adversarial_loss = lambda_val * torch.mean(torch.log(1 - attributes_pred + 1e-8) * attributes + torch.log(attributes_pred + 1e-8) * (1 - attributes))
 
     # Update the discriminator.
     discriminator_optimizer.zero_grad()
