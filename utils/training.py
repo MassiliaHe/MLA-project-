@@ -78,7 +78,7 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
 
 
 
-def discriminator_step(discriminator, autoencoder, images, attributes, discriminator_optimizer, criterion):
+def discriminator_step(discriminator, autoencoder, images,  real_images, real_attributes, fake_images, discriminator_optimizer, criterion):
     """
     Train the discriminator.
     """
@@ -87,9 +87,12 @@ def discriminator_step(discriminator, autoencoder, images, attributes, discrimin
     with torch.no_grad():
         encoded_imgs = autoencoder.encode(images)
         fake_attributes = discriminator(encoded_imgs)
+    # Calculate the discriminator's prediction on real data
+    real_predictions = discriminator(real_images)
+    real_loss = criterion(real_predictions, real_attributes)
     # Calculate loss
-    real_loss = criterion(discriminator(images), attributes.float())
-    fake_loss = criterion(fake_attributes, torch.zeros_like(fake_attributes))
+    fake_predictions = discriminator(fake_images.detach())
+    fake_loss = criterion(fake_predictions, torch.zeros_like(fake_predictions))
     loss = (real_loss + fake_loss) / 2
     # Backpropagation and optimization
     discriminator_optimizer.zero_grad()
