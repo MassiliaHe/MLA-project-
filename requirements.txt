@@ -4,3 +4,4 @@ torch
 torchvision
 Pillow
 matplotlib
+PyQt5
