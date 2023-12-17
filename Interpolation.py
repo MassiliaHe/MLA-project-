@@ -3,106 +3,108 @@ import argparse
 import numpy as np
 import torch
 from torch.autograd import Variable
+from torchvision.utils import make_grid
 import matplotlib.image
 
-from utils import init_logger
-from dataset.dataloader import load_dataset, SampleData
-from utils import parse_boolean
-
-# Setup parameters
-param_parser = argparse.ArgumentParser(description='Attribute modification')
-param_parser.add_argument("--path_to_model", type=str, default="",
-                          help="Path to the trained model")
-param_parser.add_argument("--num_images", type=int, default=10,
-                          help="Quantity of images to alter")
-param_parser.add_argument("--start_index", type=int, default=0,
-                          help="Index of the first image")
-param_parser.add_argument("--num_interpolations", type=int, default=10,
-                          help="Interpolations per image")
-param_parser.add_argument("--min_alpha", type=float, default=1,
-                          help="Minimum interpolation value")
-param_parser.add_argument("--max_alpha", type=float, default=1,
-                          help="Maximum interpolation value")
-param_parser.add_argument("--grid_size", type=int, default=5,
-                          help="Dimension of images in grid")
-param_parser.add_argument("--horizontal_grid", type=parse_boolean, default=True,
-                          help="Horizontal image interpolations")
-param_parser.add_argument("--save_path", type=str, default="output.png",
-                          help="Path for saving output")
-parameters = param_parser.parse_args()
-
-# Validate parameters
-assert os.path.isfile(parameters.path_to_model)
-assert parameters.num_images >= 1 and parameters.num_interpolations >= 2
-
-# Initialize logger and load model
-log = init_logger(None)
-autoencoder_model = torch.load(parameters.path_to_model).eval()
-
-# Set main parameters
-parameters.debug_mode = True
-parameters.batch_sz = 32
-parameters.vertical_flip = False
-parameters.horizontal_flip = False
-parameters.image_size = autoencoder_model.img_sz
-parameters.attributes = autoencoder_model.attr
-parameters.num_attributes = autoencoder_model.n_attr
-if not (len(parameters.attributes) == 1 and parameters.num_attributes == 2):
-    raise Exception("Model must use a single boolean attribute.")
-
-# Load data
-images_data, attr_data = load_dataset(parameters)
-test_images = SampleData(images_data[2], attr_data[2], parameters)
+from dataset.dataloader import get_dataloaders
 
 
-def generate_interpolations(autoencoder, img_batch, attr_batch, params):
+# parse parameters
+parser = argparse.ArgumentParser(description='Attributes swapping')
+parser.add_argument("--data_path", type=str, default="dataset", help="Chemin vers les données")
+parser.add_argument("--model_path", type=str, default="models/best_autoencoder.pt",
+                    help="Trained model path")
+parser.add_argument("--n_images", type=int, default=2,
+                    help="Number of images to modify")
+parser.add_argument("--offset", type=int, default=0,
+                    help="First image index")
+parser.add_argument("--n_interpolations", type=int, default=5,
+                    help="Number of interpolations per image")
+parser.add_argument("--alpha_min", type=float, default=1,
+                    help="Min interpolation value")
+parser.add_argument("--alpha_max", type=float, default=1,
+                    help="Max interpolation value")
+parser.add_argument("--plot_size", type=int, default=5,
+                    help="Size of images in the grid")
+parser.add_argument("--row_wise", type=bool, default=True,
+                    help="Represent image interpolations horizontally")
+parser.add_argument("--output_path", type=str, default="output.png",
+                    help="Output path")
+params = parser.parse_args()
+
+# check parameters
+assert os.path.isfile(params.model_path)
+assert params.n_images >= 1 and params.n_interpolations >= 2
+
+# create logger / load trained model
+params.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ae = torch.load(params.model_path).to(params.device)
+
+# restore main parameters
+params.debug = True
+params.batch_size = 32
+params.v_flip = False
+params.h_flip = False
+params.img_sz = 256
+params.attr = ['Young']
+params.n_attr = 2
+if not (len(params.attr) == 1 and params.n_attr == 2):
+    raise Exception("The model must use a single boolean attribute only.")
+
+# load dataset
+
+_, _, test_data = get_dataloaders(
+    params.data_path, name_attr=params.attr[0], batch_size=params.batch_size)
+
+
+def get_interpolations(ae, images, attributes, params):
     """
-    Image reconstruction and interpolation generation.
+    Reconstruct images / create interpolations
     """
-    assert len(img_batch) == len(attr_batch)
-    encoded_outputs = autoencoder.encode(img_batch)
+    assert len(images) == len(attributes)
+    enc_outputs = ae.encode(images)
 
-    # Interpolation values
-    alpha_vals = np.linspace(1 - params.min_alpha, params.max_alpha, params.num_interpolations)
-    alpha_vals = [torch.FloatTensor([1 - alpha, alpha]) for alpha in alpha_vals]
+    # interpolation values
+    alphas = np.linspace(1 - params.alpha_min, params.alpha_max, params.n_interpolations)
+    alphas = [torch.FloatTensor([1 - alpha, alpha]).to(params.device) for alpha in alphas]
 
-    # Generate outputs
-    generated_outputs = []
-    generated_outputs.append(img_batch)
-    generated_outputs.append(autoencoder.decode(encoded_outputs, attr_batch)[-1])
-    for alpha in alpha_vals:
-        alpha_var = Variable(alpha.unsqueeze(0).expand((len(img_batch), 2)).cuda())
-        generated_outputs.append(autoencoder.decode(encoded_outputs, alpha_var)[-1])
+    # original image / reconstructed image / interpolations
+    outputs = []
+    outputs.append(images)
+    outputs.append(ae.decode(enc_outputs, attributes))
+    for alpha in alphas:
+        alpha = Variable(alpha.unsqueeze(0).expand((len(images), 2)))
+        outputs.append(ae.decode(enc_outputs, alpha))
 
-    # Stack images for output
-    return torch.cat([x.unsqueeze(1) for x in generated_outputs], 1).data.cpu()
-
-
-interpolated_images = []
-
-for batch_start in range(0, parameters.num_images, 100):
-    i = parameters.start_index + batch_start
-    j = parameters.start_index + min(parameters.num_images, batch_start + 100)
-    img_subset, attr_subset = test_images.eval_batch(i, j)
-    interpolated_images.append(generate_interpolations(autoencoder_model, img_subset, attr_subset, parameters))
-
-interpolated_images = torch.cat(interpolated_images, 0)
-assert interpolated_images.size() == (parameters.num_images, 2 + parameters.num_interpolations,
-                                      3, parameters.image_size, parameters.image_size)
+    # return stacked images
+    return torch.cat([x.unsqueeze(1) for x in outputs], 1).data.cpu()
 
 
-def create_image_grid(image_set, grid_horizontal, grid_dimension=5):
+interpolations = []
+
+for k in range(0, params.n_images, 100):
+    images, attributes = next(iter(test_data))
+    images, attributes = images.to(params.device), attributes.to(params.device)
+    interpolations.append(get_interpolations(ae, images[:params.n_images], attributes[:params.n_images], params))
+
+interpolations = torch.cat(interpolations, 0)
+assert interpolations.size() == (params.n_images, 2 + params.n_interpolations,
+                                 3, params.img_sz, params.img_sz)
+
+
+def get_grid(images, row_wise, plot_size=5):
     """
-    Generate a grid of all images.
+    Create a grid with all images.
     """
-    num_images, num_columns, img_format, img_sz, _ = image_set.size()
-    if not grid_horizontal:
-        image_set = image_set.transpose(0, 1).contiguous()
-    image_set = image_set.view(num_images * num_columns, img_format, img_sz, img_sz)
-    image_set.add_(1).div_(2.0)
-    return make_grid(image_set, nrow=(num_columns if grid_horizontal else num_images))
+    n_images, n_columns, img_fm, img_sz, _ = images.size()
+    if not row_wise:
+        images = images.transpose(0, 1).contiguous()
+    images = images.view(n_images * n_columns, img_fm, img_sz, img_sz)
+    images.add_(1).div_(2.0)
+    return make_grid(images, nrow=(n_columns if row_wise else n_images))
 
 
-# Create image grid and save as PNG
-image_grid = create_image_grid(interpolated_images, parameters.horizontal_grid, parameters.grid_size)
-matplotlib.image.imsave(parameters.save_path, interpolated_images)
+# generate the grid / save it to a PNG file
+grid = get_grid(interpolations, params.row_wise, params.plot_size)
+normalized_image = (grid.cpu().numpy().transpose((1, 2, 0)) - grid.cpu().numpy().min()) / (grid.cpu().numpy().max() - grid.cpu().numpy().min())
+matplotlib.image.imsave(params.output_path, normalized_image)
