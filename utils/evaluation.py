@@ -4,81 +4,97 @@ import numpy as np
 import torch
 import torch.nn
 from logging import getLogger
+import itertools
 # from FaderNetwork.autoencoder import modify_predictions, toggle_attributes
 
-# Initialize logger
+# Initialize eval_logger
 eval_logger = getLogger()
-
-# Evaluation class
 
 
 class ModelEvaluator(object):
 
-    def __init__(self, autoencoder, discriminator, dataset, settings):
+    def __init__(self, autoencoder, discriminator, dataloader, args):
         """
         Initialize the model evaluator.
         """
         # Assign dataset and settings
-        self.dataset = dataset
-        self.settings = settings
+        self.dataloader = dataloader
+        self.args = args
 
         # Assign model components
         self.autoencoder = autoencoder
         self.discriminator = discriminator
-        # self.classifier_evaluator = classifier_evaluator
-        # assert classifier_evaluator.image_size == settings.image_size
-        # assert all(attribute in classifier_evaluator.attributes for attribute in settings.attributes)
+    
+    def eval_reconstruction_loss(self):
+        """
+        Compute the autoencoder reconstruction perplexity.
+        """
+        self.autoencoder.eval()
 
-    def validate(self):
-        print('Accuracy : 0.0')
-        return 0.0, 0.0
+        costs = []
+        limited_val_dataloader = itertools.islice(self.dataloader, self.args.val_slice)
+        for iter, (images, attributes) in enumerate(limited_val_dataloader):
+            images, attributes = images.to(self.args.device), attributes.to(self.args.device)
+            _, dec_outputs = self.autoencoder(images, attributes)
+            costs.append(((dec_outputs[-1] - images) ** 2).mean().item())
 
-    # Define methods for evaluation (e.g., eval_autoencoder_loss, eval_latent_discriminator_accuracy, etc.)
+        return np.mean(costs)
 
-    # def eval_classifier_accuracy(self):
-    #     """
-    #     Evaluate and log the accuracy of the classifier.
-    #     """
-        # self.dataloader = self.dataset.get_dataloader(batch_size=self.settings.batch_size, shuffle=False)
-        # accuracy = self.calculate_classifier_accuracy()
-        # eval_logger.info(f"Classifier Accuracy: {accuracy:.4f}")
+    def eval_disc_accu(self):
+        """
+        Compute the discriminator prediction accuracy.
+        """
+        self.autoencoder.eval()
+        self.discriminator.eval()
+        limited_val_dataloader = itertools.islice(self.dataloader, self.args.val_slice)
+        all_preds = []
+        for iter, (images, attributes) in enumerate(limited_val_dataloader):
+            images, attributes = images.to(self.args.device), attributes.to(self.args.device)
+            enc_outputs = self.autoencoder.encode(images)
+            preds = self.discriminator(enc_outputs).data
+            all_preds.append((preds.max(1)[1] == attributes.max(1)[1]).tolist())
 
-        # Below, redefine the methods of the Evaluator class with new names and slight modifications
-        # while keeping the core functionality and logic intact.
-        # The methods include computation of various accuracies and losses, and logging these evaluations.
+        return [np.mean(x) for x in all_preds]
 
-        # method to compute classifier accuracy outside the class
+    def evaluate(self, n_epoch):
+        """
+        Evaluate all models / log evaluation results.
+        """
+        eval_logger.info('')
 
-    # def calculate_classifier_accuracy(self):
-    #     """
-    #     Compute the accuracy of the classifier.
-    #     """
+        # reconstruction loss
+        ae_loss = self.eval_reconstruction_loss()
 
-        # #set the classifier in evaluation mode
-        # self.classifier.eval()
+        # log autoencoder loss
+        eval_logger.info('Autoencoder loss: %.5f' % ae_loss)
 
-        # #create a DataLoader for the dataset
-        # dataloader = dataloader(self.dataset, batch_size=self.settings.batch_size, shuffle=False)
+        # discriminator accuracy
+        log_disc = []
+        discriminator_accu = self.eval_disc_accu()
+        log_disc.append(('disc_accu', np.mean(discriminator_accu)))
+        # eval_logger.info('discriminator accuracy:')
+        print_accuracies(log_disc)
 
-        # #iInitialize counters for correct predictions and total samples processed
-        # correct_predictions = 0
-        # total_samples = 0
+        # JSON log
+        to_log = dict([
+            ('n_epoch', n_epoch),
+            ('ae_loss', ae_loss)
+        ] + log_disc)
 
-        # #disabling gradient calculation to save memory and computations during evaluation
-        # with torch.no_grad():
-        #     for batch in dataloader:
-        #         images, attributes = batch['image'], batch['attributes']
-        #         outputs = self.classifier(images.to(self.settings.device))
+        eval_logger.debug("__log__:%s" % json.dumps(to_log))
 
-        #         #binarize the classifier outputs based on a threshold (e.g., 0.5)
-        #         predictions = (torch.sigmoid(outputs) > 0.5).int()
+        return to_log
+    
+    def update_models(self, autoencoder, discriminator):
+        self.autoencoder = autoencoder
+        self.discriminator = discriminator
+    
 
-        #         #calculate the number of correct predictions in this batch
-        #         correct_predictions += (predictions == attributes).sum().item()
-        #         total_samples += len(images)
-
-        # #calculate and return accuracy as the ratio of correct predictions to total samples
-        # accuracy = correct_predictions / total_samples
-
-        # #return the accuracy
-        # return accuracy
+def print_accuracies(values):
+    """
+    Pretty plot of accuracies.
+    """
+    assert all(len(x) == 2 for x in values)
+    for name, value in values:
+        eval_logger.info('{:<20}: {:>6}'.format(name, '%.3f%%' % (100 * value)))
+    eval_logger.info('')
