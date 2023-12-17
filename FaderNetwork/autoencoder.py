@@ -5,8 +5,8 @@ class AutoEncoder(nn.Module):
 
     def __init__(self, n_attributes):
         super(AutoEncoder, self).__init__()
-        self.encode = Encoder(n_attributes)
-        self.decode = Decoder()
+        self.encode = Encoder()
+        self.decode = Decoder(n_attributes)
 
     def forward(self, x, y):
         enc_outputs = self.encode(x)

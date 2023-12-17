@@ -1,34 +1,32 @@
 import torch
 import torch.nn as nn
 
-def classifier_step(classifier, images, attributes, classifier_optimizer):
 
+def classifier_step(classifier, images, attributes, classifier_optimizer):
     """
     train the classifier 
     """
 
-    #set the classifier to training mode
-    classifier.train() 
-    #forward pass: compute the predicted outputs. 
-    preds = classifier(images)  
-    
-    #create a loss function for binary classification
-    loss_function = nn.BCEWithLogitsLoss() 
-    #compute the loss 
-    loss = loss_function(preds, attributes)  
-    
-    #zero the gradients of the classifier parameters
-    classifier_optimizer.zero_grad() 
-    #perform backpropagation to calculate gradients
-    loss.backward()  
-    #update the classifier parameters
-    classifier_optimizer.step()  
+    # set the classifier to training mode
+    classifier.train()
+    # forward pass: compute the predicted outputs.
+    preds = classifier(images)
 
-    #return the loss as a Python float
-    return loss.item()  
+    # create a loss function for binary classification
+    loss_function = nn.BCEWithLogitsLoss()
+    # compute the loss
+    loss = loss_function(preds, attributes)
 
+    # zero the gradients of the classifier parameters
+    classifier_optimizer.zero_grad()
+    # perform backpropagation to calculate gradients
+    loss.backward()
+    # update the classifier parameters
+    classifier_optimizer.step()
 
-import torch
+    # return the loss as a Python float
+    return loss.item()
+
 
 def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer, discriminator_optimizer, lambda_val, criterion, step_count):
     """
@@ -58,11 +56,12 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
     attributes_pred = discriminator(encoded_imgs.detach())
 
     # Compute the adversarial loss.
-    adversarial_loss = lambda_val * torch.mean(torch.log(1 - attributes_pred + 1e-8) * attributes + torch.log(attributes_pred + 1e-8) * (1 - attributes))
+    adversarial_loss = lambda_val * torch.mean(torch.log(1 - attributes_pred + 1e-8)
+                                               * attributes + torch.log(attributes_pred + 1e-8) * (1 - attributes))
 
     # Update the discriminator.
     discriminator_optimizer.zero_grad()
-    adversarial_loss.backward(retain_graph=True)  
+    adversarial_loss.backward(retain_graph=True)
     discriminator_optimizer.step()
 
     # Compute the total loss for the autoencoder.
@@ -74,8 +73,6 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
     autoencoder_optimizer.step()
 
     return reconstruction_loss.item(), adversarial_loss.item()
-
-
 
 
 def discriminator_step(discriminator, autoencoder, images,  real_images, real_attributes, fake_images, discriminator_optimizer, criterion):
@@ -101,7 +98,8 @@ def discriminator_step(discriminator, autoencoder, images,  real_images, real_at
 
     return loss.item()
 
-def step(autoencoder,classifier_optimizer, discriminator, images, attributes, autoencoder_optimizer,classifier, criterion, discriminator_optimizer):
+
+def step(autoencoder, classifier_optimizer, discriminator, images, attributes, autoencoder_optimizer, classifier, criterion, discriminator_optimizer):
     clf_loss = classifier_step(classifier, images, attributes, classifier_optimizer, criterion)
     # Train autoencoder
     ae_loss = autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer, criterion)
@@ -109,3 +107,8 @@ def step(autoencoder,classifier_optimizer, discriminator, images, attributes, au
     dis_loss = discriminator_step(discriminator, autoencoder, images, attributes, discriminator_optimizer, criterion)
     return clf_loss, ae_loss, dis_loss
 
+
+def get_optimizer(autoencoder, discriminator, learning_rate):
+    autoencoder_optimizer = torch.optim.Adam(autoencoder.parameters(), lr=learning_rate)
+    discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
+    return autoencoder_optimizer, discriminator_optimizer
