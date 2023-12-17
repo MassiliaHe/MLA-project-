@@ -1,6 +1,18 @@
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
+from torch.autograd import Variable
 
+AVAILABLE_ATTR = [
+    "5_o_Clock_Shadow", "Arched_Eyebrows", "Attractive", "Bags_Under_Eyes", "Bald",
+    "Bangs", "Big_Lips", "Big_Nose", "Black_Hair", "Blond_Hair", "Blurry", "Brown_Hair",
+    "Bushy_Eyebrows", "Chubby", "Double_Chin", "Eyeglasses", "Goatee", "Gray_Hair",
+    "Heavy_Makeup", "High_Cheekbones", "Male", "Mouth_Slightly_Open", "Mustache",
+    "Narrow_Eyes", "No_Beard", "Oval_Face", "Pale_Skin", "Pointy_Nose",
+    "Receding_Hairline", "Rosy_Cheeks", "Sideburns", "Smiling", "Straight_Hair",
+    "Wavy_Hair", "Wearing_Earrings", "Wearing_Hat", "Wearing_Lipstick",
+    "Wearing_Necklace", "Wearing_Necktie", "Young"
+]
 
 def classifier_step(classifier, images, attributes, classifier_optimizer):
     """
@@ -28,7 +40,7 @@ def classifier_step(classifier, images, attributes, classifier_optimizer):
     return loss.item()
 
 
-def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder_optimizer, discriminator_optimizer, lambda_val, criterion, step_count):
+def autoencoder_step(args, autoencoder, discriminator, images, attributes, autoencoder_optimizer):
     """
     Perform a training step for both the autoencoder and the discriminator.
 
@@ -40,32 +52,23 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
     :param discriminator_optimizer: The optimizer for the discriminator.
     :param lambda_val: The weight for the adversarial loss.
     :param criterion: The loss function for reconstruction (e.g., nn.MSELoss()).
-    :param step_count: The current step count for adjusting lambda_val.
     :return: The reconstruction loss and adversarial loss.
     """
     autoencoder.train()
-    discriminator.train()
+    discriminator.eval()
 
     # Forward pass through the autoencoder.
     encoded_imgs, decoded_imgs = autoencoder(images, attributes)
 
-    # Compute the reconstruction loss.
-    reconstruction_loss = criterion(decoded_imgs, images)
+    # autoencoder loss from reconstruction
+    reconstruction_loss = ((images - decoded_imgs[-1]) ** 2).mean()
 
-    # Forward pass through the discriminator.
-    attributes_pred = discriminator(encoded_imgs.detach())
-
-    # Compute the adversarial loss.
-    adversarial_loss = lambda_val * torch.mean(torch.log(1 - attributes_pred + 1e-8)
-                                               * attributes + torch.log(attributes_pred + 1e-8) * (1 - attributes))
-
-    # Update the discriminator.
-    discriminator_optimizer.zero_grad()
-    adversarial_loss.backward(retain_graph=True)
-    discriminator_optimizer.step()
-
-    # Compute the total loss for the autoencoder.
-    total_loss = reconstruction_loss + lambda_val(step_count) * adversarial_loss
+    # encoder loss from the discriminator
+    attributes_pred = discriminator(encoded_imgs)
+    adversarial_loss = cross_entropy(attributes_pred, attributes)
+    
+    # Total loss
+    total_loss = args.lambda_ae * reconstruction_loss + args.lambda_dis * adversarial_loss
 
     # Update the autoencoder.
     autoencoder_optimizer.zero_grad()
@@ -75,28 +78,23 @@ def autoencoder_step(autoencoder, discriminator, images, attributes, autoencoder
     return reconstruction_loss.item(), adversarial_loss.item()
 
 
-def discriminator_step(discriminator, autoencoder, images,  real_images, real_attributes, fake_images, discriminator_optimizer, criterion):
+def discriminator_step(args, discriminator, autoencoder, images, attributes, discriminator_optimizer):
     """
     Train the discriminator.
     """
     discriminator.train()
+    autoencoder.eval()
     # Generate fake attributes using the autoencoder
     with torch.no_grad():
         encoded_imgs = autoencoder.encode(images)
-        fake_attributes = discriminator(encoded_imgs)
-    # Calculate the discriminator's prediction on real data
-    real_predictions = discriminator(real_images)
-    real_loss = criterion(real_predictions, real_attributes)
-    # Calculate loss
-    fake_predictions = discriminator(fake_images.detach())
-    fake_loss = criterion(fake_predictions, torch.zeros_like(fake_predictions))
-    loss = (real_loss + fake_loss) / 2
+    attributes_pred = discriminator(encoded_imgs)
+    adversarial_loss = cross_entropy(attributes_pred, attributes)
     # Backpropagation and optimization
     discriminator_optimizer.zero_grad()
-    loss.backward()
+    adversarial_loss.backward()
     discriminator_optimizer.step()
 
-    return loss.item()
+    return adversarial_loss.item()
 
 
 def step(autoencoder, classifier_optimizer, discriminator, images, attributes, autoencoder_optimizer, classifier, criterion, discriminator_optimizer):
@@ -112,3 +110,49 @@ def get_optimizer(autoencoder, discriminator, learning_rate):
     autoencoder_optimizer = torch.optim.Adam(autoencoder.parameters(), lr=learning_rate)
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
     return autoencoder_optimizer, discriminator_optimizer
+
+def cross_entropy(output, attributes):
+    """
+    Compute attributes loss.
+    """
+    # categorical
+    y = attributes.max(1)[1].unsqueeze(1).to(attributes.dtype)
+    return F.binary_cross_entropy_with_logits(output, y)
+
+def check_attr(args):
+    """
+    Check attributes validy.
+    """
+    if args.attr == '*':
+        args.attr = attr_flag(','.join(AVAILABLE_ATTR))
+    elif len(args.attr.split(',')) == 1:
+        args.attr = attr_flag(args.attr)
+    else:
+        assert all(name in AVAILABLE_ATTR and n_cat >= 2 for name, n_cat in args.attr)
+    args.n_attr = sum([n_cat for _, n_cat in args.attr])
+
+def attr_flag(s):
+    """
+    Parse attributes parameters.
+    """
+    if s == "*":
+        return s
+    attr = s.split(',')
+    assert len(attr) == len(set(attr))
+    attributes = []
+    for x in attr:
+        if '.' not in x:
+            attributes.append((x, 2))
+        else:
+            split = x.split('.')
+            assert len(split) == 2 and len(split[0]) > 0
+            assert split[1].isdigit() and int(split[1]) >= 2
+            attributes.append((split[0], int(split[1])))
+    return sorted(attributes, key=lambda x: (x[1], x[0]))
+
+def save_models(autoencoder, discriminator, name='best'):
+    """
+    Save the best models / periodically save the models.
+    """
+    torch.save(autoencoder, f'models/{name}_autoencoder.pt')
+    torch.save(discriminator, f'models/{name}_discriminator.pt')
