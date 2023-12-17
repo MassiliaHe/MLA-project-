@@ -23,17 +23,22 @@ def configure_arg_parser():
     parser = argparse.ArgumentParser(description="Fader Networks")
 
     # Arguments optionnels avec valeurs par défaut
-    parser.add_argument("--data_path", type=str, default="dataset", help="Chemin vers les données")
+    parser.add_argument("--data_path", type=str, default="dataset", help="Path to the dataset.")
     parser.add_argument("--classifier_path", type=str, default="models/classifier.pth",
-                        help="Chemin vers le classificateur")
-    parser.add_argument("--attr", type=str, default="Gender", help="Attribut à utiliser (par défaut: 'Gender')")
-    parser.add_argument("--batch_size", type=int, default=128, help="Taille du lot (par défaut: 64)")
-    parser.add_argument("--num_epochs", type=int, default=2, help="Nombre d'époques (par défaut: 10)")
-    parser.add_argument("--learning_rate", type=float, default=0.0002, help="Taux d'apprentissage (par défaut: 0.001)")
-    parser.add_argument("--lambda_ae", type=float, default=1, help="Taux d'apprentissage (par défaut: 0.001)")
-    parser.add_argument("--lambda_dis", type=float, default=0.0001, help="Taux d'apprentissage (par défaut: 0.001)")
-    parser.add_argument("--train_slice", type=int, default=2, help="Taux d'apprentissage (par défaut: 0.001)")
-    parser.add_argument("--val_slice", type=int, default=2, help="Taux d'apprentissage (par défaut: 0.001)")
+                        help="Path to the pre-trained classifier model.")
+    parser.add_argument("--attr", type=str, default="Gender", help="Attribute for training (default: 'Gender').")
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training (default: 128).")
+    parser.add_argument("--num_epochs", type=int, default=2, help="Number of training epochs (default: 2).")
+    parser.add_argument("--learning_rate", type=float, default=0.0002,
+                        help="Learning rate for the optimizer (default: 0.0002).")
+    parser.add_argument("--lambda_ae", type=float, default=1,
+                        help="Weight for the autoencoder loss component (default: 1).")
+    parser.add_argument("--lambda_dis", type=float, default=0.0001,
+                        help="Weight for the discriminator loss component (default: 0.0001).")
+    parser.add_argument("--train_slice", type=int, default=2,
+                        help="Proportion of the dataset to use for training (default: 2).")
+    parser.add_argument("--val_slice", type=int, default=2,
+                        help="Proportion of the dataset to use for validation (default: 2).")
 
     args = parser.parse_args()
     return args

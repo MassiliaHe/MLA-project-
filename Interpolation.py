@@ -9,28 +9,29 @@ import matplotlib.image
 from dataset.dataloader import get_dataloaders
 
 
-# parse parameters
-parser = argparse.ArgumentParser(description='Attributes swapping')
-parser.add_argument("--data_path", type=str, default="dataset", help="Chemin vers les données")
+# Parse parameters for attribute swapping.
+parser = argparse.ArgumentParser(description='Perform attribute swapping on images.')
+parser.add_argument("--data_path", type=str, default="dataset", help="Path to the dataset")  # Path to the data.
 parser.add_argument("--model_path", type=str, default="models/best_autoencoder.pt",
-                    help="Trained model path")
-parser.add_argument("--n_images", type=int, default=2,
-                    help="Number of images to modify")
-parser.add_argument("--offset", type=int, default=0,
-                    help="First image index")
-parser.add_argument("--n_interpolations", type=int, default=5,
-                    help="Number of interpolations per image")
-parser.add_argument("--alpha_min", type=float, default=1,
-                    help="Min interpolation value")
-parser.add_argument("--alpha_max", type=float, default=1,
-                    help="Max interpolation value")
-parser.add_argument("--plot_size", type=int, default=5,
-                    help="Size of images in the grid")
+                    help="Path to the trained autoencoder model")  # Trained model path.
+parser.add_argument("--n_images", type=int, default=2, help="Number of images to modify")  # Number of images to modify.
+# First image index.
+parser.add_argument("--offset", type=int, default=0, help="Index offset for the first image to be modified")
+# Number of interpolations per image.
+parser.add_argument("--n_interpolations", type=int, default=5, help="Number of attribute interpolations per image")
+# Min interpolation value.
+parser.add_argument("--alpha_min", type=float, default=0.0, help="Minimum alpha value for interpolation")
+# Max interpolation value.
+parser.add_argument("--alpha_max", type=float, default=1.0, help="Maximum alpha value for interpolation")
+# Size of images in the grid.
+parser.add_argument("--plot_size", type=int, default=5, help="Size of the plot grid for displaying images")
+# Represent image interpolations horizontally.
 parser.add_argument("--row_wise", type=bool, default=True,
-                    help="Represent image interpolations horizontally")
-parser.add_argument("--output_path", type=str, default="output.png",
-                    help="Output path")
+                    help="Layout the interpolation row-wise if true, column-wise if false")
+# Output path.
+parser.add_argument("--output_path", type=str, default="output.png", help="File path for the output image")
 params = parser.parse_args()
+
 
 # check parameters
 assert os.path.isfile(params.model_path)
@@ -106,5 +107,6 @@ def get_grid(images, row_wise, plot_size=5):
 
 # generate the grid / save it to a PNG file
 grid = get_grid(interpolations, params.row_wise, params.plot_size)
-normalized_image = (grid.cpu().numpy().transpose((1, 2, 0)) - grid.cpu().numpy().min()) / (grid.cpu().numpy().max() - grid.cpu().numpy().min())
+normalized_image = (grid.cpu().numpy().transpose((1, 2, 0)) - grid.cpu().numpy().min()) / \
+    (grid.cpu().numpy().max() - grid.cpu().numpy().min())
 matplotlib.image.imsave(params.output_path, normalized_image)
