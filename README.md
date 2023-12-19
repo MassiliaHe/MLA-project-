@@ -29,6 +29,10 @@ RAM : 12G (2.8G Used )
 
 
 ## Model Results
+#### Visualising losses with Tensorboard at 2000 iterations
+<img src="./fig/loss_FN.jpg" alt="Model Results" width="800" height="350"/>
+
+
 ### Result for Male attribut at 2000 iterations
 <img src="./fig/FaderNet_Male_step_2000.jpg" alt="Model Results" width="800" height="350"/>
 
