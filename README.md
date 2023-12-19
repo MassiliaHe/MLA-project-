@@ -23,6 +23,10 @@ Fader Networks enable the manipulation of natural images by controlling specific
 
 
 ## Model Results
+### Result for Male attribut at 2000 iterations
+<img src="./fig/FaderNet_Male_step_2000.jpg" alt="Model Results" width="800" height="350"/>
+
+### Result with the graphical interface for one image
 <img src="./fig/interface.jpg" alt="Model Results" width="400" height="350"/>
 
 ## Data
