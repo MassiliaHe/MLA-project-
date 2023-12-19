@@ -17,7 +17,7 @@ class Classifier(nn.Module):
     #constructor of the Classifier class
     #n_attributes: parameter storing the number of attributes with a default value of 40
     #which corresponds to the number of attributes in the CelebA dataset.
-    def __init__(self, n_attributes=40):
+    def __init__(self, n_attributes=2):
 
         #call the constructor of the parent class to initialize the module correctly
         super(Classifier, self).__init__()
@@ -25,9 +25,9 @@ class Classifier(nn.Module):
         #build the linear layers for the classifier
         self.fc_layers = nn.Sequential(
 
-            #the first linear layer takes 512 inputs (the output of the encoder)
+            #the first linear layer takes the inputs (the output of the encoder)
             #and transforms them into an intermediate dimension (1024)
-            nn.Linear(512, 1024),  
+            nn.Linear(3 * 256 * 256, 1024, 1024),  
             #normalization by batches: to establish the training
             nn.BatchNorm1d(1024),
             #LeakyReLU activation function: to introduce non-linearity

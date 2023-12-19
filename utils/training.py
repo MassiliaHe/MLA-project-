@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
-from torch.autograd import Variable
 
 AVAILABLE_ATTR = [
     "5_o_Clock_Shadow", "Arched_Eyebrows", "Attractive", "Bags_Under_Eyes", "Bald",
@@ -37,7 +35,7 @@ def classifier_step(classifier, images, attributes, classifier_optimizer):
     classifier_optimizer.step()
 
     # return the loss as a Python float
-    return loss.item()
+    return loss.cpu().data.item()
 
 
 def autoencoder_step(args, autoencoder, discriminator, images, attributes, autoencoder_optimizer):
@@ -61,21 +59,22 @@ def autoencoder_step(args, autoencoder, discriminator, images, attributes, autoe
     encoded_imgs, decoded_imgs = autoencoder(images, attributes)
 
     # autoencoder loss from reconstruction
-    reconstruction_loss = ((images - decoded_imgs[-1]) ** 2).mean()
+    MSELoss = nn.MSELoss()
+    reconstruction_loss = MSELoss(images, decoded_imgs)
 
     # encoder loss from the discriminator
     attributes_pred = discriminator(encoded_imgs)
-    adversarial_loss = cross_entropy(attributes_pred, attributes)
+    adversarial_loss = cross_entropy(attributes_pred, 1-attributes) # Fake attributs
     
     # Total loss
-    total_loss = args.lambda_ae * reconstruction_loss + args.lambda_dis * adversarial_loss
+    ae_loss = args.lambda_ae * reconstruction_loss + args.lambda_dis * adversarial_loss
 
     # Update the autoencoder.
     autoencoder_optimizer.zero_grad()
-    total_loss.backward()
+    ae_loss.backward()
     autoencoder_optimizer.step()
 
-    return reconstruction_loss.item(), adversarial_loss.item()
+    return reconstruction_loss.cpu().data.item(), adversarial_loss.cpu().data.item()
 
 
 def discriminator_step(args, discriminator, autoencoder, images, attributes, discriminator_optimizer):
@@ -94,7 +93,7 @@ def discriminator_step(args, discriminator, autoencoder, images, attributes, dis
     adversarial_loss.backward()
     discriminator_optimizer.step()
 
-    return adversarial_loss.item()
+    return adversarial_loss.cpu().data.item()
 
 
 def step(autoencoder, classifier_optimizer, discriminator, images, attributes, autoencoder_optimizer, classifier, criterion, discriminator_optimizer):
@@ -117,7 +116,8 @@ def cross_entropy(output, attributes):
     """
     # categorical
     y = attributes.max(1)[1].unsqueeze(1).to(attributes.dtype)
-    return F.binary_cross_entropy_with_logits(output, y)
+    BCE_loss = nn.BCEWithLogitsLoss()
+    return BCE_loss(output, y)
 
 def check_attr(args):
     """
