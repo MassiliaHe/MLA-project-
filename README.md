@@ -16,6 +16,12 @@ Fader Networks enable the manipulation of natural images by controlling specific
 - CUDA
 - PyQt5
 
+## Hardware Requirement
+We're running our experiments in colab with following hardware settings : 
+
+GPU : Nvidia T4 (with 23G VRAM) (Only 1.7 Used in this project)
+RAM : 12G (2.8G Used )
+
 ## Architecture
 
 ### Fader Architecture
