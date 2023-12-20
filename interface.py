@@ -22,7 +22,7 @@ class ImageProcessingApp(QWidget):
         self.image_label_right = QLabel(self)
         self.load_button = QPushButton('Interpolate', self)
         self.load_button_load = QPushButton('Data path', self)
-        self.attribute_label = QLabel('Attribute: Gender', self)  # Added label for attribute
+        self.attribute_label = QLabel('Attribute: Male', self)  # Added label for attribute
 
         # Définir une taille fixe pour le bouton
         self.load_button.setFixedSize(150, 40)
@@ -103,11 +103,10 @@ class ImageProcessingApp(QWidget):
         return pixmap
 
 
-def predict(img_path='data/img/1.jpeg', dec_path='models/_dec.pt', enc_path='models/_enc.pt', n_interpolations=10, max_attr=2.0, min_attr=2.0, save_fig_path='fig/fig.jpg', use_gpu=False, IMAGE_SIZE=256):
+def predict(img_path='data/img/1.jpeg', ae_path='models/_ae.pt', n_interpolations=10, max_attr=2.0, min_attr=2.0, save_fig_path='fig/fig.jpg', use_gpu=False, IMAGE_SIZE=256):
 
     # Load Model
-    enc = torch.load(enc_path, map_location='cuda' if use_gpu else 'cpu')
-    dec = torch.load(dec_path, map_location='cuda' if use_gpu else 'cpu')
+    ae = torch.load(ae_path, map_location='cuda' if use_gpu else 'cpu')
 
     # Interpolate Attributes
     alphas = np.linspace(1 - min_attr, max_attr, n_interpolations)
@@ -122,8 +121,8 @@ def predict(img_path='data/img/1.jpeg', dec_path='models/_dec.pt', enc_path='mod
     # Run test
     test_img = img.float()
     test_attr = torch.FloatTensor(alphas[1])
-    reconstruct_img = dec(enc(test_img), test_attr)
-
+    reconstruct_img = ae.decode(ae.encode(test_img), test_attr)
+    
     org_image = np.transpose((1+test_img.squeeze(0).cpu().data.numpy())/2, (1, 2, 0))
     rec_image = np.transpose((1+reconstruct_img.squeeze(0).cpu().data.numpy())/2, (1, 2, 0))
     if save_fig_path:
