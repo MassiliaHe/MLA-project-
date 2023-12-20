@@ -162,7 +162,7 @@ def save_models(autoencoder, discriminator, name='best'):
     torch.save(discriminator, f'models/{name}_discriminator.pt')
 
 
-def save_classifier(classifier, directory="path to saving folder", filename='classifier_best.pth'):
+def save_classifier_model(classifier, directory="path to saving folder", filename='classifier_best.pth'):
 
     """
     Sauvegarde the best model for the classifier
