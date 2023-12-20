@@ -1,4 +1,5 @@
 import torch
+import os
 import torch.nn as nn
 
 AVAILABLE_ATTR = [
@@ -110,6 +111,9 @@ def get_optimizer(autoencoder, discriminator, learning_rate):
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
     return autoencoder_optimizer, discriminator_optimizer
 
+def get_classifier_optimizer(classifier, learning_rate):
+    return torch.optim.Adam(classifier.parameters(), lr=learning_rate)
+
 def cross_entropy(output, attributes):
     """
     Compute attributes loss.
@@ -156,3 +160,19 @@ def save_models(autoencoder, discriminator, name='best'):
     """
     torch.save(autoencoder, f'models/{name}_autoencoder.pt')
     torch.save(discriminator, f'models/{name}_discriminator.pt')
+
+
+def save_classifier(classifier, directory="path to saving folder", filename='classifier_best.pth'):
+
+    """
+    Sauvegarde the best model for the classifier
+    """
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    filepath = os.path.join(directory, filename)
+
+    torch.save(classifier.state_dict(), filepath)
+
+    print(f"Classificateur sauvegardé avec succès dans {filepath}")
