@@ -1,97 +1,128 @@
 """
-This script trains a classifier model using the CelebA dataset
+This script trains a classifier 
 """
-# import the OS module for interacting with the operating system
-import os
-# import the PyTorch library for deep learning tasks
+
+#import the PyTorch library for deep learning
 import torch
-# import the neural network module from PyTorch
-import torch.nn as nn
-# import DataLoader for batch loading of dataset
-from torch.utils.data import DataLoader
+#import the argparse library for parsing command-line arguments
+import argparse
+#import the itertools module for iteration and combination functions
+import itertools
+#import tqdm for displaying progress bars during iteration
+from tqdm import tqdm
 
-# import CelebADataset class and split_data function from the dataset.dataloader module
-from dataset.dataloader import CelebADataset, split_data
-# import the Classifier class from the FaderNetwork module
+
+#import a custom function to get data loaders
+from dataset.dataloader import get_dataloaders
+#import a custom Classifier class
 from FaderNetwork.classifier import Classifier
-# import the classifier_step function from the utils.training module
-from utils.training import classifier_step
+#import custom utility functions
+from utils.training import classifier_step, get_classifier_optimizer, save_classifier
 
+from torch.utils.tensorboard import SummaryWriter # Import SummaryWriter for TensorBoard logging.
 
-def train_classifier(base_dir, annotations_file, list_eval_partition, Attr):
+#this function configures and parses command-line arguments for the Classifier Training script
+def configure_arg_parser():
+    #create an argument parser object with a description for the script
+    parser = argparse.ArgumentParser(description="Classifier Training")
+    #add command-line arguments with their respective data types, default values, and help descriptions.
+    #argument for specifying the data path (default path provided)
+    parser.add_argument("--data_path", type=str, default="C:\\Users\\sabri\\OneDrive\\Bureau\\celebA_dataset", help="C:\\Users\\sabri\\OneDrive\\Bureau\\celebA_dataset")
+    #argument for setting the batch size for training (default is 128)
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training (default: 128).")
+    #argument for specifying the number of training epochs (default is 10)
+    parser.add_argument("--num_epochs", type=int, default=10, help="Number of training epochs (default: 10).")
+    #argument for setting the learning rate for the optimizer (default is 0.001)
+    parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate for the optimizer (default: 0.001).")
+    #argument for selecting the attribute for training (default is 'Young')
+    parser.add_argument("--attr", type=str, default="Young", help="Attribute for training (default: 'Young').")
+    #argument for specifying the proportion of the dataset to use for training (default is 2)
+    parser.add_argument("--train_slice", type=int, default=2, help="Proportion of the dataset to use for training (default: 2).")
+    #argument for specifying the proportion of the dataset to use for validation (default is 2)
+    parser.add_argument("--val_slice", type=int, default=2, help="Proportion of the dataset to use for validation (default: 2).")
+    #parse the command-line arguments and store them in an 'args' object
+    args = parser.parse_args()
+    #return the parsed arguments as an object
+    return args
 
-    # check if the specified directories exist
-    if not os.path.exists(base_dir):
-        raise FileNotFoundError(f"The base directory {base_dir} was not found.")
-    if not os.path.exists(annotations_file):
-        raise FileNotFoundError(f"The annotations file {annotations_file} was not found.")
+def main(args):
+    writer = SummaryWriter(log_dir='logs', comment='Classifier')
 
-    # path to save the best model
-    model_save_path = 'classifier_best.pth'
+    train_dataloader, val_dataloader, _ = get_dataloaders(args.data_path, name_attr=args.attr, batch_size=args.batch_size)
 
-    # split data into training, validation, and test sets
-    dataset_ids = split_data(list_eval_partition)
+    #set the device (GPU if available, otherwise CPU)
+    args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #initialize the classifier and move it to the selected device
+    classifier = Classifier().to(args.device)
+    #get the optimizer for the classifier
+    classifier_optimizer = get_classifier_optimizer(classifier, args.learning_rate)
+    #create a classifier evaluator
+    #evaluator = ClassifierEvaluator(classifier, val_dataloader, args)
 
-    # dataLoader for training dataset
-    train_dataset = CelebADataset(base_dir, annotations_file, Attr, dataset_ids['train'])
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
-
-    # dataLoader for validation dataset
-    validation_dataset = CelebADataset(base_dir, annotations_file, Attr, dataset_ids['validation'])
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size=64, shuffle=False)
-
-    # initialize the model and optimizer
-    classifier = Classifier()
-    classifier_optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    classifier.to(device)
-
-    # set the number of epochs for training
-    num_epochs = 10
-    # initialize the variable to track the best validation loss
+    #initialize the best validation loss to positive infinity
     best_val_loss = float('inf')
 
-    for epoch in range(num_epochs):
-        # training loop
+    #loop through the specified number of training epochs
+    for epoch in range(args.num_epochs):
+        #set the classifier to training mode
         classifier.train()
-        for batch in train_dataloader:
-            # load images and their corresponding attributes to the device
-            images, attributes = batch['image'].to(device), batch['attributes'].to(device)
-            # perform a training step and get the classifier loss
-            classifier_loss = classifier_step(classifier, images, attributes, classifier_optimizer)
-            # print the classifier loss for each epoch
-            print(f"Epoch [{epoch+1}/{num_epochs}], Classifier Loss: {classifier_loss}")
+        #initialize the total classifier loss
+        total_classifier_loss = 0
 
-        # validation loop
+        num_batches = 0
+        for iter, (images, attributes) in tqdm(enumerate(itertools.islice(train_dataloader, args.train_slice)), total=args.train_slice):
+            #move data to the device
+            images, attributes = images.to(args.device), attributes.to(args.device)
+            #compute classifier loss
+            classifier_loss = classifier_step(classifier, images, attributes, classifier_optimizer)
+            #accumulate the loss
+            total_classifier_loss += classifier_loss
+            num_batches += 1
+
+        #calculate the average classifier loss
+        avg_classifier_loss = total_classifier_loss / num_batches
+        print(f"Epoch [{epoch}/{args.num_epochs}] - Classifier Loss: {avg_classifier_loss}")
+
+        #set the classifier to evaluation mode
         classifier.eval()
+        #initialize the total validation loss
         total_val_loss = 0
+
+        #disable gradient computation for validation
         with torch.no_grad():
-            for batch in validation_dataloader:
-                # load validation images and their attributes to the device
-                val_images, val_attributes = batch['image'].to(device), batch['attributes'].to(device)
-                # get the classifier's output for the validation images
+            #iterate through validation data
+            for iter, (val_images, val_attributes) in enumerate(val_dataloader):
+                #move data to the device
+                val_images, val_attributes = val_images.to(args.device), val_attributes.to(args.device)
+                #get classifier predictions
                 val_outputs = classifier(val_images)
-                # calculate the validation loss
-                val_loss = nn.functional.binary_cross_entropy_with_logits(val_outputs, val_attributes)
-                # accumulate the validation loss
+
+                #print dimensions for debugging
+                print("Dimensions des sorties du classificateur: ", val_outputs.shape)
+                print("Dimensions des cibles: ", val_attributes.shape)
+
+                #compute validation loss
+                val_loss = torch.nn.functional.binary_cross_entropy_with_logits(val_outputs, val_attributes)
+                #accumulate the loss
                 total_val_loss += val_loss.item()
 
-        # calculate the average validation loss for the epoch
-        avg_val_loss = total_val_loss / len(validation_dataloader)
-        # print the average validation loss for the epoch
-        print(f"Validation Loss for Epoch {epoch+1}: {avg_val_loss}")
+        #calculate the average validation loss
+        avg_val_loss = total_val_loss / len(val_dataloader)
+        print(f"Validation Loss for Epoch {epoch}: {avg_val_loss}")
 
-        # save the classifier model if it has the best validation loss so far
+        #check if the current validation loss is better than the best so far
         if avg_val_loss < best_val_loss:
+            #update the best validation loss
             best_val_loss = avg_val_loss
-            # create the directory for model_save_path if it doesn't exist
-            if not os.path.isdir(os.path.dirname(model_save_path)):
-                os.makedirs(os.path.dirname(model_save_path))
-            # save the state of the classifier
-            torch.save(classifier.state_dict(), model_save_path)
+            #save the best classifier
+            save_classifier(classifier, directory="C:\\Users\\sabri\\OneDrive\\Bureau\\celebA_dataset\\classifier_evaluation", filename="classifier_best.pth")
 
-
-# entry point for the script
+        #log the classifier loss to TensorBoard
+        writer.add_scalar('Classifier Loss', avg_classifier_loss, epoch)
+        #log the validation loss to TensorBoard
+        writer.add_scalar('Validation Loss', avg_val_loss, epoch)
 if __name__ == "__main__":
-    # call the train_classifier function with the specified paths and attribute name
-    train_classifier('/path/to/celeba/dataset', 'list_attr_celeba.csv', 'list_eval_partition.csv', 'Attribute_Name')
+    #parse command-line arguments
+    args = configure_arg_parser()
+    #call the main function to start training.
+    main(args)
